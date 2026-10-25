@@ -1,0 +1,34 @@
+{
+  "name": "workbuddy-daily-checkin",
+  "version": "1.0.0",
+  "description": "WorkBuddy 每日自动签到（本机登录态直签，零依赖 Node.js 脚本）",
+  "main": "checkin.js",
+  "bin": {
+    "wb-checkin": "checkin.js"
+  },
+  "scripts": {
+    "start": "node checkin.js",
+    "status": "node checkin.js --status",
+    "check": "node checkin.js --json"
+  },
+  "keywords": [
+    "workbuddy",
+    "checkin",
+    "签到",
+    "daily",
+    "积分",
+    "wbipc"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0paquer/workbuddy-daily-checkin"
+  },
+  "bugs": {
+    "url": "https://github.com/0paquer/workbuddy-daily-checkin/issues"
+  },
+  "homepage": "https://github.com/0paquer/workbuddy-daily-checkin#readme"
+}
