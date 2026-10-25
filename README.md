@@ -21,7 +21,23 @@ WorkBuddy 桌面客户端在后台托管了一个本地进程间通信守护进�
    该通道会由客户端**自动注入当前登录态**；
 4. 调用签到接口 `POST /v2/billing/meter/daily-checkin` 完成签到。
 
+签到成功后，工具会在本机写入一个本地历史文件（默认 `<wbipc 目录>/checkin-history.json`），
+据此计算「累计 / 当前连续 / 最长连续」天数，并在日志里以「成长中心」形式展示。
+这部分**完全本地、不依赖接口字段**，即使断网或后端接口改版也不影响统计。
+
 整个过程不接触、不导出你的账号密码或长效令牌，仅使用客户端自己生成的本地会话。
+
+### 工作流示意图
+
+```mermaid
+flowchart LR
+    A["WorkBuddy 桌面客户端"] -->|"本地命名管道 wbipc"| B["握手 HMAC-SHA256"]
+    B --> C["broker/GetPipe\n打开 c:wb.request"]
+    C --> D["http.fetch 受控代理"]
+    D -->|"自动注入登录态"| E["POST /v2/billing/meter/daily-checkin"]
+    E --> F["成长中心统计\n累计 / 连续 / 最长"]
+    F --> G["本地 checkin-history.json"]
+```
 
 ---
 
@@ -48,6 +64,7 @@ cd workbuddy-checkin
 ```
 
 > 提示：本工具只用 Node 内置模块，`npm install` 是可选项（仅为满足约定）。
+> 需要自定义路径或部署到其它机器时，参考根目录 [`.env.example`](./.env.example) 设置环境变量即可——**默认零配置即可运行**。
 
 ---
 
@@ -88,8 +105,11 @@ node checkin.js --status      # 或 -s
 
 ```bash
 node checkin.js --json        # 或 -j
-# 示例输出：{"ok":true,"code":0,"message":"今日已签到","status":200,"body":{...}}
+# 示例输出：{"ok":true,"code":0,"message":"今日已签到","status":200,"body":{...},"streak":{"total":12,"current":5,"longest":20}}
 ```
+
+> 另可用 `--no-stats`（或 `-S`）关闭本地连续天数统计（不读写历史文件）；
+> 用环境变量 `WBIP_NO_STATS=1` 可达到同样效果。
 
 ### 4. 环境变量
 
@@ -99,6 +119,8 @@ node checkin.js --json        # 或 -j
 | `WORKBUDDY_HOME` | 指定 WorkBuddy 主目录（其下应有 `wbipc/endpoint.json`） | 自动探测 |
 | `WBIP_ENDPOINT` + `WBIP_TICKET` | 直连模式：同时提供管道与票据，跳过读取 `endpoint.json`（高级部署用） | 无 |
 | `WBIP_LOG` | 指定日志文件路径 | `<wbipc 目录>/checkin.log` |
+| `WBIP_CHECKIN_HISTORY` | 连续签到统计历史文件路径（成长中心功能用） | `<wbipc 目录>/checkin-history.json` |
+| `WBIP_NO_STATS` | 设为 `1` 关闭本地连续天数统计（不读写历史文件） | `0`（默认开启） |
 
 ### 5. 退出码（供调用方判断）
 
@@ -186,14 +208,17 @@ A：以 WorkBuddy 客户端「Buddy 加油站」页面显示为准（通常每�
 
 ```
 workbuddy-checkin/
-├── checkin.js        # CLI 入口 + 可复用库（runCheckin / findEndpointFile 导出）
+├── checkin.js        # CLI 入口 + 可复用库（runCheckin / findEndpointFile / computeStreak 导出）
 ├── src/
 │   └── wbipc.js      # wbipc 命名管道客户端库（连接/握手/受控代理，零依赖）
 ├── run-checkin.sh    # POSIX 启动器（Git Bash/WSL，自动定位 node）
 ├── run-checkin.bat   # Windows 启动器（CMD/双击，自动定位 node）
 ├── package.json      # 项目元信息 / 启动脚本
 ├── README.md         # 本说明
+├── LICENSE           # MIT License
+├── .env.example      # 环境变量示例（零配置即可运行，按需复制为 .env）
 └── .gitignore
+# 运行期会在 wbipc 目录生成：checkin.log、checkin-history.json（连续签到统计）
 ```
 
 ### 作为库调用
@@ -247,4 +272,4 @@ session.close();
 
 ## 十、许可证
 
-MIT License。
+本项目以 **MIT License** 开源，详见仓库根目录 [LICENSE](./LICENSE) 文件。
